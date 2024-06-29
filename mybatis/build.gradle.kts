@@ -54,6 +54,8 @@ dependencies {
 	implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 	//Jackson Databind
 	implementation("com.fasterxml.jackson.core:jackson-databind")
+	//java-jwt
+	implementation("com.auth0:java-jwt:4.4.0")
 	
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("com.h2database:h2")
@@ -62,8 +64,12 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.mybatis.spring.boot:mybatis-spring-boot-starter-test:2.3.1")
 	testImplementation("org.springframework.security:spring-security-test")
+	//AssertJ Core
+	testImplementation("org.assertj:assertj-core")
 	//Mockito-Kotlin
 	testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
+	//GreenMail - JUnit5 support via GreenMailExtension
+	testImplementation("com.icegreen:greenmail-junit5:1.6.15")
 	//Embedded Redis
 	testImplementation("it.ozimov:embedded-redis:0.7.2")
 }

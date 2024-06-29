@@ -65,6 +65,8 @@ dependencies {
 	implementation("com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.8.1")
 	//Thymeleaf Layout Dialect
 	implementation("nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect")
+	//java-jwt
+	implementation("com.auth0:java-jwt:4.4.0")
 	
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	runtimeOnly("com.h2database:h2")
@@ -74,8 +76,12 @@ dependencies {
 	
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
+	//AssertJ Core
+	testImplementation("org.assertj:assertj-core")
 	//Mockito-Kotlin
 	testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
+	//GreenMail - JUnit5 support via GreenMailExtension
+	testImplementation("com.icegreen:greenmail-junit5:1.6.15")
 	//Embedded Redis
 	testImplementation("it.ozimov:embedded-redis:0.7.2")
 }
