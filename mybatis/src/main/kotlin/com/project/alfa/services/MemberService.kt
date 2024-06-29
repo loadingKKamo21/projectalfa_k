@@ -16,7 +16,6 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.*
 
 private const val MAX_EXPIRE_TIME: Long = 5L  //이메일 인증 만료 제한 시간
@@ -61,9 +60,9 @@ class MemberService(
         memberRepository.save(member)
         
         //가입 인증 메일 전송
-        sendAuthEmail(member.username,
-                      member.authInfo.emailAuthToken!!,
-                      member.authInfo.emailAuthExpireTime!!)
+        emailSender.sendVerificationEmail(member.username,
+                                          member.authInfo.emailAuthToken!!,
+                                          member.authInfo.emailAuthExpireTime!!)
         
         return member.id!!
     }
@@ -121,7 +120,7 @@ class MemberService(
         memberRepository.update(param)
         
         //인증 메일 재전송
-        sendAuthEmail(username, authToken, expireTime)
+        emailSender.sendVerificationEmail(username, authToken, expireTime)
     }
     
     /**
@@ -147,7 +146,7 @@ class MemberService(
                                        nickname = ""))
         
         //비밀번호 찾기 결과 메일 전송
-        sendFindPasswordEmail(member.username, tempPassword!!)
+        emailSender.sendPasswordResetEmail(member.username, tempPassword!!)
     }
     
     /**
@@ -291,40 +290,6 @@ class MemberService(
             throw InvalidValueException("Email is not verified.", ErrorCode.AUTH_NOT_COMPLETED)
         }
         return
-    }
-    
-    //==================== 이메일 전송 메서드 ====================//
-    
-    /**
-     * 인증 메일 전송
-     *
-     * @param email      - 메일 주소
-     * @param authToken  - 인증 토큰
-     * @param expireTime - 인증 만료 제한 시간
-     */
-    private fun sendAuthEmail(email: String, authToken: String, expireTime: LocalDateTime) {
-        val subject = "이메일 인증"
-        val content = "계정 인증을 완료하기 위해 제한 시간 내 다음 링크를 클릭해주세요.\n" +
-                "인증 만료 제한 시간: ${expireTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss"))}" +
-                "\n" +
-                "http://localhost:8080/verify-email?email=$email&$authToken=$authToken"
-        
-        emailSender.send(email, subject, content)
-    }
-    
-    /**
-     * 비밀번호 찾기 결과 메일 전송
-     *
-     * @param email        - 메일 주소
-     * @param tempPassword - 임시 비밀번호
-     */
-    private fun sendFindPasswordEmail(email: String, tempPassword: String) {
-        val subject = "비밀번호 찾기 결과"
-        val content = "입력하신 정보로 찾은 계정의 임시 비밀번호는 다음과 같습니다.\n" +
-                "임시 비밀번호: $tempPassword\n" +
-                "임시 비밀번호로 로그인한 다음 비밀번호를 변경해주세요."
-        
-        emailSender.send(email, subject, content)
     }
     
 }

@@ -22,7 +22,11 @@ class MainController(private val memberService: MemberService) {
     fun verifyEmail(@RequestParam email: String,
                     @RequestParam authToken: String,
                     request: HttpServletRequest): ResponseEntity<String> {
-        val requestTime = LocalDateTime.parse(request.getHeader("Date"), DateTimeFormatter.RFC_1123_DATE_TIME)
+        val header: String? = request.getHeader("Date")
+        var requestTime: LocalDateTime = if (header.isNullOrBlank())
+            LocalDateTime.now()
+        else
+            LocalDateTime.parse(header, DateTimeFormatter.RFC_1123_DATE_TIME)
         memberService.verifyEmailAuth(email, authToken, requestTime)
         return ResponseEntity.ok("Email verified successfully.")
     }
