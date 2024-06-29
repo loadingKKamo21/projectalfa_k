@@ -1,33 +1,32 @@
 package com.project.alfa.services
 
+import com.icegreen.greenmail.configuration.GreenMailConfiguration
+import com.icegreen.greenmail.junit5.GreenMailExtension
+import com.icegreen.greenmail.util.ServerSetup
 import com.project.alfa.config.DummyGenerator
 import com.project.alfa.config.TestConfig
 import com.project.alfa.entities.Role
 import com.project.alfa.error.exception.EntityNotFoundException
 import com.project.alfa.error.exception.ErrorCode
 import com.project.alfa.error.exception.InvalidValueException
-import com.project.alfa.repositories.MemberRepository
 import com.project.alfa.repositories.mybatis.MemberMapper
 import com.project.alfa.services.dto.MemberJoinRequestDto
 import com.project.alfa.services.dto.MemberUpdateRequestDto
-import com.project.alfa.utils.EmailSender
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.*
+import org.junit.jupiter.api.extension.RegisterExtension
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.*
+import javax.mail.Message
 import kotlin.random.Random
 
 @Import(TestConfig::class)
@@ -37,29 +36,24 @@ import kotlin.random.Random
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 internal class MemberServiceTest {
     
+    companion object {
+        @RegisterExtension
+        val greenMailExtension: GreenMailExtension = GreenMailExtension(ServerSetup(3025, null, "smtp"))
+                .withConfiguration(GreenMailConfiguration.aConfig().withUser("springboot", "secret"))
+                .withPerMethodLifecycle(true)
+    }
+    
+    @Autowired
     lateinit var memberService: MemberService
     
     @Autowired
-    lateinit var memberRepository: MemberRepository
-    
-    @Autowired
     lateinit var passwordEncoder: PasswordEncoder
-    
-    @MockBean
-    lateinit var emailSender: EmailSender
     
     @Autowired
     lateinit var memberMapper: MemberMapper
     
     @Autowired
     lateinit var dummy: DummyGenerator
-    
-    @BeforeEach
-    fun setup() {
-        memberService = MemberService(memberRepository, passwordEncoder, emailSender)
-        
-        doNothing().`when`(emailSender).send(anyString(), anyString(), anyString())
-    }
     
     @Test
     @DisplayName("회원 가입")
@@ -71,14 +65,18 @@ internal class MemberServiceTest {
         val id = memberService.join(dto)
         
         //Then
+        greenMailExtension.waitForIncomingEmail(5000, 1)
         val findMember = memberMapper.findById(id)
+        val receivedMessages = greenMailExtension.receivedMessages
         
         assertThat(dto.username.lowercase()).isEqualTo(findMember.username)
         assertThat(passwordEncoder.matches(dto.password, findMember.password)).isTrue
         assertThat(dto.nickname).isEqualTo(findMember.nickname)
         assertThat(findMember.role).isEqualTo(Role.USER)
         
-        verify(emailSender, times(1)).send(anyString(), anyString(), anyString())
+        assertThat(receivedMessages).hasSize(1)
+        assertThat(findMember.username)
+                .isEqualTo(receivedMessages[0].getRecipients(Message.RecipientType.TO)[0].toString())
     }
     
     @Test
@@ -185,8 +183,6 @@ internal class MemberServiceTest {
         //이미 인증된 계정의 경우 인증 토큰, 인증 만료 제한 시간은 변경되지 않음
         assertThat(findMember.authInfo.emailAuthToken).isEqualTo(member.authInfo.emailAuthToken)
         assertThat(findMember.authInfo.emailAuthExpireTime).isEqualTo(member.authInfo.emailAuthExpireTime)
-        
-        verify(emailSender, never()).send(anyString(), anyString(), anyString())
     }
     
     @Test
@@ -208,14 +204,18 @@ internal class MemberServiceTest {
         memberService.verifyEmailAuth(member.username, otherAuthToken, LocalDateTime.now())
         
         //Then
+        greenMailExtension.waitForIncomingEmail(5000, 1)
         val findMember = memberMapper.findById(id)
+        val receivedMessages = greenMailExtension.receivedMessages
         
         //잘못된 토큰으로 인증을 시도한 경우 새로운 토큰 및 만료 제한 시간으로 인증 메일이 재전송됨
         assertThat(findMember.authInfo.auth).isFalse
         assertThat(findMember.authInfo.emailAuthToken).isNotEqualTo(authToken)
         assertThat(findMember.authInfo.emailAuthExpireTime).isNotEqualTo(member.authInfo.emailAuthExpireTime)
         
-        verify(emailSender, times(1)).send(anyString(), anyString(), anyString())
+        assertThat(receivedMessages).hasSize(1)
+        assertThat(findMember.username)
+                .isEqualTo(receivedMessages[0].getRecipients(Message.RecipientType.TO)[0].toString())
     }
     
     @Test
@@ -232,14 +232,18 @@ internal class MemberServiceTest {
         memberService.verifyEmailAuth(member.username, member.authInfo.emailAuthToken!!, expireTime!!.plusSeconds(1))
         
         //Then
+        greenMailExtension.waitForIncomingEmail(5000, 1)
         val findMember = memberMapper.findById(id)
+        val receivedMessages = greenMailExtension.receivedMessages
         
         //인증 만료 제한 시간 초과 후 시도한 경우 새로운 토큰 및 만료 제한 시간으로 인증 메일이 재전송됨
         assertThat(findMember.authInfo.auth).isFalse
         assertThat(findMember.authInfo.emailAuthToken).isNotEqualTo(member.authInfo.emailAuthToken)
         assertThat(findMember.authInfo.emailAuthExpireTime).isNotEqualTo(expireTime)
         
-        verify(emailSender, times(1)).send(anyString(), anyString(), anyString())
+        assertThat(receivedMessages).hasSize(1)
+        assertThat(findMember.username)
+                .isEqualTo(receivedMessages[0].getRecipients(Message.RecipientType.TO)[0].toString())
     }
     
     @Test
@@ -254,13 +258,17 @@ internal class MemberServiceTest {
         memberService.findPassword(member.username)
         
         //Then
+        greenMailExtension.waitForIncomingEmail(5000, 1)
         val findMember = memberMapper.findById(id)
+        val receivedMessages = greenMailExtension.receivedMessages
         
         //비밀번호 찾기를 시도하면 20자리 임시 비밀번호로 변경되고, 메일로 전송됨
         assertThat(findMember.password).isNotEqualTo(passwordEncoder.encode(member.password))
         assertThat(passwordEncoder.matches("Password1!@", findMember.password)).isFalse
         
-        verify(emailSender, times(1)).send(anyString(), anyString(), anyString())
+        assertThat(receivedMessages).hasSize(1)
+        assertThat(findMember.username)
+                .isEqualTo(receivedMessages[0].getRecipients(Message.RecipientType.TO)[0].toString())
     }
     
     @Test
@@ -279,7 +287,9 @@ internal class MemberServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.AUTH_NOT_COMPLETED)
                 .hasMessage("Email is not verified.")
         
+        greenMailExtension.waitForIncomingEmail(5000, 1)
         val findMember = memberMapper.findById(id)
+        val receivedMessages = greenMailExtension.receivedMessages
         
         //인증되지 않은 계정에 비밀번호 찾기를 시도하면 임시 비밀번호는 발급되지 않고 인증 메일이 전송됨
         assertThat(findMember.authInfo.auth).isFalse
@@ -287,7 +297,9 @@ internal class MemberServiceTest {
         assertThat(findMember.authInfo.emailAuthExpireTime).isNotEqualTo(member.authInfo.emailAuthExpireTime)
         assertThat(passwordEncoder.matches("Password1!@", findMember.password)).isTrue  //임시 비밀번호로 변경되지 않음
         
-        verify(emailSender, times(1)).send(anyString(), anyString(), anyString())
+        assertThat(receivedMessages).hasSize(1)
+        assertThat(findMember.username)
+                .isEqualTo(receivedMessages[0].getRecipients(Message.RecipientType.TO)[0].toString())
     }
     
     @Test
@@ -415,7 +427,9 @@ internal class MemberServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.AUTH_NOT_COMPLETED)
                 .hasMessage("Email is not verified.")
         
+        greenMailExtension.waitForIncomingEmail(5000, 1)
         val afterMember = memberMapper.findById(id)
+        val receivedMessages = greenMailExtension.receivedMessages
         
         //인증되지 않은 계정에 정보 수정을 시도하면 정보는 수정되지 않고 인증 메일이 전송됨
         assertThat(afterMember.authInfo.auth).isFalse
@@ -429,7 +443,9 @@ internal class MemberServiceTest {
         assertThat(afterMember.signature).isNotEqualTo(dto.signature)
         assertThat(beforeMember.signature).isEqualTo(afterMember.signature)
         
-        verify(emailSender, times(1)).send(anyString(), anyString(), anyString())
+        assertThat(receivedMessages).hasSize(1)
+        assertThat(afterMember.username)
+                .isEqualTo(receivedMessages[0].getRecipients(Message.RecipientType.TO)[0].toString())
     }
     
     @Test
