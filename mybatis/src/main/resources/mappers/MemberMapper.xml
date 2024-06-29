@@ -11,7 +11,7 @@
         <result property="createdDate" column="created_date"/>
         <result property="lastModifiedDate" column="last_modified_date"/>
         <result property="deleteYn" column="delete_yn"/>
-        <result property="role" column="role" typeHandler="com.tryout.alfa.entities.EnumTypeHandler"/>
+        <result property="role" column="role" typeHandler="com.project.alfa.entities.EnumTypeHandler"/>
         <association property="authInfo" javaType="AuthInfo">
             <result property="auth" column="auth"/>
             <result property="authenticatedTime" column="authenticated_time"/>
