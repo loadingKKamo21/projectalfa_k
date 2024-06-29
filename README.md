@@ -1,7 +1,7 @@
 # Project alfa
 
 ## 개요
-Kotlin / Spring Boot 기반 CRUD 프로젝트
+Kotlin / Spring Boot 기반 CRUD 프로젝트 \+ [Java 버전](https://github.com/loadingKKamo21/projectalfa_j)
 
 ## 목차
 1. [개발 환경](#개발-환경)
@@ -25,7 +25,7 @@ Kotlin / Spring Boot 기반 CRUD 프로젝트
 - Embedded Redis (for Test)
 
 #### Tool
-- IntelliJ IDEA, Gradle
+- IntelliJ IDEA, Gradle, smtp4dev
 
 ## 설계 목표
 - 스프링 부트를 활용한 CRUD API 애플리케이션
@@ -37,9 +37,11 @@ Kotlin / Spring Boot 기반 CRUD 프로젝트
 	- MyBatis: Mapper 활용
 - 게시글/댓글 페이징, 게시글 검색 기능
 - 스프링 시큐리티 활용 계정 2타입 설계: 이메일 인증 계정, OAuth2 계정
+    - ~~HTTP Basic 인증~~(주석)
+    - JWT 인증
 - 파일 업로드/다운로드
 - 스프링 캐시 + Redis: 게시글 조회 수 증가 로직
-- Repository / Service / Controller 테스트 코드 작성
+- Repository / Service / Controller JUnit5 테스트 코드 작성
 
 ## 프로젝트 정보
 
@@ -48,13 +50,13 @@ Kotlin / Spring Boot 기반 CRUD 프로젝트
 ###### [ 공통 ]
 ```
 +---main
-|   +---java
+|   +---kotlin
 |   |   \---com
 |   |       \---project
 |   |           \---alfa
 |   |               |   AlfaApplication.kt
-|   |               |   InitDb.kt	-> 더미 데이터 생성/저장
-|   |               +---aop	//로깅 AOP
+|   |               |   InitDb.kt            -> 더미 데이터 생성/저장
+|   |               +---aop            //로깅 AOP
 |   |               |   |   Pointcuts.kt
 |   |               |   |   ProjectAspects.kt
 |   |               |   +---annotation
@@ -66,54 +68,64 @@ Kotlin / Spring Boot 기반 CRUD 프로젝트
 |   |               |       \---logtrace
 |   |               |               LogTrace.kt
 |   |               |               ThreadLocalLogTrace.kt
-|   |               +---config	//설정
+|   |               +---config            //설정
 |   |               |       AopConfig.kt
-|   |               |       CacheConfig.kt	-> 캐시 설정
-|   |               |       ProjectConfig.kt
-|   |               |       RedisConfig.kt	-> Redis 설정
-|   |               |       SecurityConfig.kt	-> 시큐리티 설정
+|   |               |       CacheConfig.kt               -> 캐시 설정
+|   |               |       ProjectConfig.kt             -> 빈 등록
+|   |               |       RedisConfig.kt               -> Redis 설정
+|   |               |       SecurityConfig.kt            -> 시큐리티 설정
 |   |               |       WebConfig.kt
-|   |               +---controllers	//컨트롤러
+|   |               +---controllers            //컨트롤러
 |   |               |   |   MainController.kt
 |   |               |   \---api
 |   |               |           AttachmentApiController.kt
+|   |               |           AuthApiController.kt
 |   |               |           CommentApiController.kt
 |   |               |           MemberApiController.kt
 |   |               |           PostApiController.kt
-|   |               +---entities	//엔티티
-|   |               |       Attachment.kt	-> 첨부파일(UploadFile 구현체)
-|   |               |       AuthInfo.kt	-> 인증 정보(Member 필드)
-|   |               |       Comment.kt	-> 댓글
-|   |               |       Member.kt	-> 계정
-|   |               |       Post.kt	-> 게시글
-|   |               |       Role.kt	-> 계정 유형(enum)
-|   |               |       UploadFile.kt	-> 업로드 파일(abstract)
-|   |               +---error	//에러 or 예외 관련
-|   |               |   |   ErrorResponse.kt	->에러 정보 전달
+|   |               +---entities            //엔티티
+|   |               |       Attachment.kt            -> 첨부파일(UploadFile 구현)
+|   |               |       AuthInfo.kt              -> 인증 정보(Member 필드)
+|   |               |       Comment.kt               -> 댓글
+|   |               |       Member.kt                -> 계정
+|   |               |       Post.kt                  -> 게시글
+|   |               |       Role.kt                  -> 계정 유형(enum)
+|   |               |       UploadFile.kt            -> 업로드 파일(abstract)
+|   |               +---error            //예외
+|   |               |   |   ErrorResponse.kt            -> 에러 정보 전달
 |   |               |   |   GlobalExceptionHandler.kt
 |   |               |   \---exception
 |   |               |           BusinessException.kt
 |   |               |           EntityNotFoundException.kt
-|   |               |           ErrorCode.kt	->에러 코드
+|   |               |           ErrorCode.kt            -> 에러 코드(enum)
 |   |               |           InvalidValueException.kt
-|   |               +---interceptor	//인터셉터
+|   |               +---interceptor            //인터셉터
 |   |               |       LogInterceptor.kt
-|   |               +---repositories	//리포지토리
+|   |               +---repositories            //리포지토리(DAO)
 |   |               |   +---dto
-|   |               |   |       SearchParam.kt	-> 검색 파라미터
-|   |               +---security	//시큐리티
+|   |               |   |       SearchParam.kt            -> 검색 파라미터 DTO
+|   |               +---security            //시큐리티
 |   |               |   |   CustomAuthenticationFailureHandler.kt
 |   |               |   |   CustomAuthenticationProvider.kt
-|   |               |   |   CustomUserDetails.kt	-> UserDetails, OAuth2User 구현체
-|   |               |   |   CustomUserDetailsService.kt	-> UserDetailsService 구현체
-|   |               |   \---oauth2
-|   |               |       |   CustomOAuth2UserService.kt	-> OAuth2 인증 서비스
+|   |               |   |   CustomUserDetails.kt                   -> UserDetails, OAuth2User 구현
+|   |               |   |   CustomUserDetailsService.kt            -> UserDetailsService 구현
+|   |               |   +---jwt            //JWT 인증
+|   |               |   |   +---entrypoint
+|   |               |   |   |       JwtAuthenticationEntryPoint.kt
+|   |               |   |   \---filter
+|   |               |   |       |   JwtAuthenticationFilter.kt
+|   |               |   |       |   JwtRequestFilter.kt
+|   |               |   |       \---dto
+|   |               |   |               LoginBody.kt            -> JWT 로그인 DTO
+|   |               |   \---oauth2            //OAuth 2.0
+|   |               |       |   CustomOAuth2UserService.kt            -> DefaultOAuth2UserService 구현
 |   |               |       \---provider
-|   |               |               GoogleUserInfo.kt
-|   |               |               OAuth2UserInfo.kt -> OAuth2 인증 정보 인터페이스
-|   |               +---services	//서비스
+|   |               |               GoogleUserInfo.kt                 -> Google용 인증 정보(OAuth2UserInfo 구현)
+|   |               |               OAuth2UserInfo.kt                 -> OAuth2 인증 정보(interface)
+|   |               +---services            //서비스
 |   |               |   |   AttachmentService.kt
 |   |               |   |   CommentService.kt
+|   |               |   |   JwtService.kt
 |   |               |   |   MemberService.kt
 |   |               |   |   PostService.kt
 |   |               |   \---dto
@@ -125,32 +137,64 @@ Kotlin / Spring Boot 기반 CRUD 프로젝트
 |   |               |           MemberUpdateRequestDto.kt
 |   |               |           PostRequestDto.kt
 |   |               |           PostResponseDto.kt
-|   |               |           RegEx.kt	-> 필드값 확인용 정규표현식 모음
-|   |               \---utils
-|   |                       EmailSender.kt	-> 이메일 전송
-|   |                       FileUtil.kt	-> 업로드 파일 관련
-|   |                       RandomGenerator.kt	-> 랜덤 데이터 생성
+|   |               |           RegEx.kt            -> 필드값 확인용 정규식 모음
+|   |               \---utils            //유틸
+|   |                       EmailSender.kt                -> 이메일 전송 관련
+|   |                       FileUtil.kt                   -> 업로드 파일 관련
+|   |                       RandomGenerator.kt            -> 랜덤 데이터 생성(문자열, 숫자 등)
 |   \---resources
-|       |   application.yml
+|           application.yml
+\---test
+    \---kotlin
+        \---com
+            \---project
+                \---alfa
+                    |   AlfaApplicationTests.kt
+                    +---config            //테스트 설정
+                    |   |   DummyGenerator.kt            -> 테스트용 더미 데이터 생성
+                    |   |   TestConfig.kt
+                    |   +---redis
+                    |   |       EmbeddedRedisConfig.kt            -> 테스트용 EmbeddedRedis 설정
+                    |   |       RandomPort.kt
+                    |   \---security
+                    |           TestSecurityConfig.kt            -> 테스트용 시큐리티 설정
+                    |           WithCustomMockUser.kt            -> 테스트용 인증 객체(annotation)
+                    |           WithCustomSecurityContextFactory.kt
+                    +---controllers
+                    |   |   MainControllerTest.kt
+                    |   \---api
+                    |           AttachmentApiControllerTest.kt
+                    |           AuthApiControllerTest.kt
+                    |           CommentApiControllerTest.kt
+                    |           MemberApiControllerTest.kt
+                    |           PostApiControllerTest.kt
+                    +---services
+                    |       AttachmentServiceTest.kt
+                    |       CommentServiceTest.kt
+                    |       JwtServiceTest.kt
+                    |       MemberServiceTest.kt
+                    |       PostServiceTest.kt
+                    \---utils
+                            EmailSenderTest.kt
 ```
 
 ###### [ JPA ]
 ```
 +---main
-|   +---java
+|   +---kotlin
 |   |   \---com
 |   |       \---project
 |   |           \---alfa
 |   |               +---entities
 |   |               |       BaseTimeEntity.kt
-|   |               |       PersistentLogins.kt	-> 시큐리티 remember-me
-|   |               +---repositories	//JPA Repository
-|   |               |   +---v1	//EntityManager 사용
+|   |               |       PersistentLogins.kt            -> 시큐리티 remember-me
+|   |               +---repositories
+|   |               |   +---v1            //EntityManager 사용
 |   |               |   |       AttachmentRepositoryV1.kt
 |   |               |   |       CommentRepositoryV1.kt
 |   |               |   |       MemberRepositoryV1.kt
 |   |               |   |       PostRepositoryV1.kt
-|   |               |   +---v2	//JpaRepository + Specification 사용
+|   |               |   +---v2            //JpaRepository + Specification 사용
 |   |               |   |   |   AttachmentJpaRepository.kt
 |   |               |   |   |   AttachmentRepositoryV2.kt
 |   |               |   |   |   CommentJpaRepository.kt
@@ -160,8 +204,8 @@ Kotlin / Spring Boot 기반 CRUD 프로젝트
 |   |               |   |   |   PostJpaRepository.kt
 |   |               |   |   |   PostRepositoryV2.kt
 |   |               |   |   \---specification
-|   |               |   |           PostSpecification.kt	//게시글 검색 및 페이징
-|   |               |   \---v3	//JpaRepository + Querydsl 사용
+|   |               |   |           PostSpecification.kt
+|   |               |   \---v3            //JpaRepository + Querydsl 사용
 |   |               |       |   AttachmentRepositoryV3.kt
 |   |               |       |   CommentRepositoryV3.kt
 |   |               |       |   MemberRepositoryV3.kt
@@ -175,40 +219,72 @@ Kotlin / Spring Boot 기반 CRUD 프로젝트
 |   |               |               MemberRepositoryV3Impl.kt
 |   |               |               PostRepositoryV3Custom.kt
 |   |               |               PostRepositoryV3Impl.kt
+\---test
+    \---kotlin
+        \---com
+            \---project
+                \---alfa
+                    +---repositories
+                    |   +---v1
+                    |   |       AttachmentRepositoryV1Test.kt
+                    |   |       CommentRepositoryV1Test.kt
+                    |   |       MemberRepositoryV1Test.kt
+                    |   |       PostRepositoryV1Test.kt
+                    |   +---v2
+                    |   |       AttachmentRepositoryV2Test.kt
+                    |   |       CommentRepositoryV2Test.kt
+                    |   |       MemberRepositoryV2Test.kt
+                    |   |       PostRepositoryV2Test.kt
+                    |   \---v3
+                    |           AttachmentRepositoryV3Test.kt
+                    |           CommentRepositoryV3Test.kt
+                    |           MemberRepositoryV3Test.kt
+                    |           PostRepositoryV3Test.kt
 ```
 
 ###### [ MyBatis ]
 ```
 +---main
-|   +---java
+|   +---kotlin
 |   |   \---com
 |   |       \---project
 |   |           \---alfa
 |   |               +---entities
-|   |               |       EnumTypeHandler.kt	-> Kotlin-MySQL 간 enum 타입 변환
+|   |               |       EnumTypeHandler.kt            -> Java-MySQL 간 enum 타입 변환
 |   |               +---repositories
 |   |               |   |   AttachmentRepository.kt
 |   |               |   |   CommentRepository.kt
 |   |               |   |   MemberRepository.kt
 |   |               |   |   PostRepository.kt
-|   |               |   \---mybatis	//MyBatis Repository
+|   |               |   \---mybatis            //MyBatis DAO
 |   |               |           AttachmentMapper.kt
 |   |               |           AttachmentRepositoryImpl.kt
 |   |               |           CommentMapper.kt
 |   |               |           CommentRepositoryImpl.kt
 |   |               |           MemberMapper.kt
 |   |               |           MemberRepositoryImpl.kt
-|   |               |           MyBatisTokenRepositoryImpl.kt
-|   |               |           PersistentTokenMapper.kt
+|   |               |           MyBatisTokenRepositoryImpl.kt            -> 시큐리티 remember-me
+|   |               |           PersistentTokenMapper.kt                 -> 시큐리티 remember-me
 |   |               |           PostMapper.kt
 |   |               |           PostRepositoryImpl.kt
 |   \---resources
-|       +---mappers	//MyBatis Mapper.xml
-|       |       AttachmentMapper.xml
-|       |       CommentMapper.xml
-|       |       MemberMapper.xml
-|       |       PersistentTokenMapper.xml	-> 시큐리티 remember-me
-|       |       PostMapper.xml
+|       |   schema.sql
+|       \---mappers            //MyBatis Mapper
+|               AttachmentMapper.xml
+|               CommentMapper.xml
+|               MemberMapper.xml
+|               PersistentTokenMapper.xml
+|               PostMapper.xml
+\---test
+    \---kotlin
+        \---com
+            \---project
+                \---alfa
+                    +---repositories
+                    |       AttachmentRepositoryTest.kt
+                    |       CommentRepositoryTest.kt
+                    |       MemberRepositoryTest.kt
+                    |       PostRepositoryTest.kt
 ```
 
 #### [ 코드 예시 ]
@@ -232,6 +308,11 @@ Kotlin / Spring Boot 기반 CRUD 프로젝트
 - 스프링 시큐리티 연동 2가지 계정 가입 방식
 	- 아이디(이메일) + 이메일 인증
 	- OAuth2
+	- ~~HTTP Basic 인증~~(주석)
+	- JWT 인증
+	    - Access/RefreshToken 구분
+	    - 필터, 엔드포인트로 Request 토큰 검증
+	    - RefreshToken: Redis 서버 저장(로그아웃 시 삭제)
 - JPA 프로젝트 OSIV OFF 설정
 	- 서비스 레이어 외부로 엔티티 노출 억제
 	- 컨트롤러-서비스 전송 간 DTO 사용(MyBatis 프로젝트도 동일한 방식 적용)
@@ -264,16 +345,13 @@ Kotlin / Spring Boot 기반 CRUD 프로젝트
 				max-active: 8
 	...
 	```
-	- SMTP: 이메일 전송 시 사용, 기본값 Google SMTP
+	- SMTP: 이메일 전송 시 사용, 기본값 smtp4dev, ~~Google SMTP~~
 	```
 	...
 	spring:
 		mail:
-			host: smtp.gmail.com
-			port: 587
-			username: { Google Username }
-			password: { Google Password }
-			properties:
+		    host: localhost
+		    port: 25
 				...
 	```
 	- OAuth2: 기본값 Google, 타 OAuth2 사용 시 OAuth2UserInfo 구현체 추가 설정 필요
