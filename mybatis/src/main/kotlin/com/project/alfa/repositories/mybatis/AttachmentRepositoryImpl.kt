@@ -26,9 +26,9 @@ class AttachmentRepositoryImpl(private val attachmentMapper: AttachmentMapper) :
      * @return 첨부파일 정보 목록
      */
     override fun saveAll(attachments: List<Attachment>): List<Attachment> {
-//        attachmentMapper.saveAll(attachments)
-        for (attachment in attachments)
-            attachmentMapper.save(attachment)
+        attachmentMapper.saveAll(attachments)
+//        for (attachment in attachments)
+//            attachmentMapper.save(attachment)
         return attachments
     }
     
