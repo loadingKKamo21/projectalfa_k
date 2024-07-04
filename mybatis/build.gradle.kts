@@ -36,12 +36,13 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-web")
-	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.mybatis.spring.boot:mybatis-spring-boot-starter:2.3.1")
 	implementation("org.thymeleaf.extras:thymeleaf-extras-springsecurity5")
 //	//Kotlin Serialization
 //	implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")
+	//jackson-module-kotlin
+	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	//Gson
 	implementation("com.google.code.gson:gson:2.10.1")
 	//kotlin-logging

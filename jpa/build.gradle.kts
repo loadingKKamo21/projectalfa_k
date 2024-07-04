@@ -46,9 +46,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-web")
-	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.thymeleaf.extras:thymeleaf-extras-springsecurity5")
+	//jackson-module-kotlin
+	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	//kotlin-logging
 	implementation("io.github.oshai:kotlin-logging-jvm:5.1.0")
 	//Kotlin Serialization
