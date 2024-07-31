@@ -52,6 +52,13 @@ class Member(username: String, password: String, authInfo: AuthInfo, nickname: S
     var comments: MutableList<Comment> = ArrayList()    //작성 댓글 목록
         protected set
     
+    @PrePersist
+    @PreUpdate
+    private fun ensureUsernameLowercase(): Unit {
+        if (username.isNotBlank())
+            username = username.lowercase()
+    }
+    
     //==================== 계정 정보 수정 메서드 ====================//
     
     /**
