@@ -1,6 +1,8 @@
 package com.project.alfa.controllers.api
 
 import com.project.alfa.services.JwtService
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -14,9 +16,12 @@ import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
 @RestController
-@RequestMapping(value = ["/api/auth"],
-                consumes = [MediaType.APPLICATION_JSON_VALUE],
-                produces = [MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(
+    value = ["/api/auth"],
+    consumes = [MediaType.APPLICATION_JSON_VALUE],
+    produces = [MediaType.APPLICATION_JSON_VALUE]
+)
+@Tag(name = "Auth API", description = "계정 인증 API 입니다.")
 class AuthApiController(private val jwtService: JwtService) {
     
     /**
@@ -29,10 +34,14 @@ class AuthApiController(private val jwtService: JwtService) {
      * @return
      */
     @PostMapping("/refresh")
-    fun refreshToken(request: HttpServletRequest,
-                     response: HttpServletResponse,
-                     @RequestBody(required = false) body: Map<String, String>?,
-                     @AuthenticationPrincipal userDetails: UserDetails): ResponseEntity<String> {
+    @Tag(name = "Auth API")
+    @Operation(summary = "JWT Token refresh", description = "JWT 토큰을 리프레쉬합니다.")
+    fun refreshToken(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        @RequestBody(required = false) body: Map<String, String>?,
+        @AuthenticationPrincipal userDetails: UserDetails
+    ): ResponseEntity<String> {
         var refreshToken = getRefreshToken(request, body)
         if (!refreshToken.isNullOrBlank()) {
             val accessToken = jwtService.refreshAccessToken(refreshToken, userDetails)

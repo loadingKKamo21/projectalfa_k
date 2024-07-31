@@ -6,6 +6,8 @@ import com.project.alfa.security.CustomUserDetails
 import com.project.alfa.services.AttachmentService
 import com.project.alfa.services.PostService
 import com.project.alfa.services.dto.PostRequestDto
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -17,12 +19,15 @@ import javax.servlet.http.HttpServletRequest
 import javax.validation.Valid
 
 @RestController
-@RequestMapping(value = ["/api/posts"],
-                consumes = [MediaType.APPLICATION_JSON_VALUE],
-                produces = [MediaType.APPLICATION_JSON_VALUE])
+@RequestMapping(
+    value = ["/api/posts"],
+    consumes = [MediaType.APPLICATION_JSON_VALUE],
+    produces = [MediaType.APPLICATION_JSON_VALUE]
+)
+@Tag(name = "Post API", description = "게시글 API 입니다.")
 class PostApiController(
-        private val postService: PostService,
-        private val attachmentService: AttachmentService
+    private val postService: PostService,
+    private val attachmentService: AttachmentService
 ) {
     
     /**
@@ -34,12 +39,15 @@ class PostApiController(
      * @return
      */
     @GetMapping
+    @Tag(name = "Post API")
+    @Operation(summary = "게시글 목록 조회", description = "게시글 목록을 조회합니다.")
     fun postsList(
-            @RequestParam(required = false, value = "condition") searchCondition: String?,
-            @RequestParam(required = false, value = "keyword") searchKeyword: String?,
-            pageable: Pageable
+        @RequestParam(required = false, value = "condition") searchCondition: String?,
+        @RequestParam(required = false, value = "keyword") searchKeyword: String?,
+        pageable: Pageable
     ): ResponseEntity<String> = ResponseEntity.ok(
-            Gson().toJson(postService.findAllPage(SearchParam(searchCondition, searchKeyword), pageable)))
+        Gson().toJson(postService.findAllPage(SearchParam(searchCondition, searchKeyword), pageable))
+    )
     
     /**
      * GET: 작성자 기준 게시글 목록 페이지
@@ -49,11 +57,14 @@ class PostApiController(
      * @return
      */
     @GetMapping("/writer")
+    @Tag(name = "Post API")
+    @Operation(summary = "작성자 기준 게시글 목록 조회", description = "작성자(로그인된 계정) 기준으로 게시글 목록을 조회합니다.")
     fun postsListByWriter(
-            @AuthenticationPrincipal userDetails: UserDetails,
-            pageable: Pageable
+        @AuthenticationPrincipal userDetails: UserDetails,
+        pageable: Pageable
     ): ResponseEntity<String> = ResponseEntity.ok(
-            Gson().toJson(postService.findAllPageByWriter((userDetails as CustomUserDetails).id, pageable)))
+        Gson().toJson(postService.findAllPageByWriter((userDetails as CustomUserDetails).id, pageable))
+    )
     
     /**
      * GET: 게시글 상세 조회 페이지
@@ -63,6 +74,8 @@ class PostApiController(
      * @return
      */
     @GetMapping("/{postId}")
+    @Tag(name = "Post API")
+    @Operation(summary = "게시글 상세 조회", description = "게시글 상세 조회 페이지를 출력합니다.")
     fun readPostPage(@PathVariable postId: Long, request: HttpServletRequest): ResponseEntity<String> {
         postService.addViewCountWithCaching(postId, request.session.id, request.remoteAddr)
         val map: MutableMap<String, Any> = HashMap()
@@ -77,6 +90,8 @@ class PostApiController(
      * @return
      */
     @GetMapping("/write")
+    @Tag(name = "Post API")
+    @Operation(summary = "게시글 작성 페이지", description = "게시글 작성 페이지를 출력합니다.")
     fun writePostPage(): ResponseEntity<String> = ResponseEntity.ok(Gson().toJson(PostRequestDto()))
     
     /**
@@ -87,9 +102,11 @@ class PostApiController(
      * @return
      */
     @PostMapping("/write")
+    @Tag(name = "Post API")
+    @Operation(summary = "게시글 작성", description = "게시글 작성을 수행합니다.")
     fun writePost(
-            @AuthenticationPrincipal userDetails: UserDetails,
-            @Valid @RequestBody params: PostRequestDto
+        @AuthenticationPrincipal userDetails: UserDetails,
+        @Valid @RequestBody params: PostRequestDto
     ): ResponseEntity<String> {
         params.writerId = (userDetails as CustomUserDetails).id
         val id = postService.create(params)
@@ -104,6 +121,8 @@ class PostApiController(
      * @return
      */
     @GetMapping("/write/{postId}")
+    @Tag(name = "Post API")
+    @Operation(summary = "게시글 수정 페이지", description = "게시글 수정 페이지를 출력합니다.")
     fun updatePostPage(@PathVariable postId: Long): ResponseEntity<String> {
         val map: MutableMap<String, Any> = HashMap()
         map["post"] = postService.read(postId)
@@ -121,10 +140,12 @@ class PostApiController(
      * @return
      */
     @PostMapping("/write/{postId}")
+    @Tag(name = "Post API")
+    @Operation(summary = "게시글 수정", description = "게시글 수정을 수행합니다.")
     fun updatePost(
-            @PathVariable postId: Long,
-            @AuthenticationPrincipal userDetails: UserDetails,
-            @Valid @RequestBody params: PostRequestDto
+        @PathVariable postId: Long,
+        @AuthenticationPrincipal userDetails: UserDetails,
+        @Valid @RequestBody params: PostRequestDto
     ): ResponseEntity<String> {
         params.writerId = (userDetails as CustomUserDetails).id
         postService.update(params)
@@ -141,9 +162,11 @@ class PostApiController(
      * @return
      */
     @PostMapping("/delete")
+    @Tag(name = "Post API")
+    @Operation(summary = "게시글 삭제", description = "게시글 삭제를 수행합니다.")
     fun deletePost(
-            @AuthenticationPrincipal userDetails: UserDetails,
-            @RequestBody params: PostRequestDto
+        @AuthenticationPrincipal userDetails: UserDetails,
+        @RequestBody params: PostRequestDto
     ): ResponseEntity<String> {
         postService.delete(params.id!!, (userDetails as CustomUserDetails).id)
         attachmentService.deleteAllFilesByIds(params.removeFileIds, params.id!!)
